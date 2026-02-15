@@ -12,14 +12,34 @@ AI-powered music generation from text descriptions. Generate full songs with voc
 - **Source Separation**: Extract individual instruments from mixes
 - **Track Completion**: Extend and complete partial tracks
 
+## 💻 Platform Support
+
+### Primary Target: Linux with NVIDIA GPUs (CUDA)
+
+**Optimized for cloud deployment:**
+- ✅ Thunder Compute, AWS, Vast.ai, RunPod, etc.
+- ✅ Tested on RTX 3090, RTX A6000, A100
+- ✅ Full acceleration with CUDA 11.8+
+- ✅ Quantization, torch.compile, vLLM backend
+
+### Secondary Support: macOS (Apple Silicon)
+
+**Functional but not optimized:**
+- ⚠️ Falls back to PyTorch MPS (Metal Performance Shaders)
+- ⚠️ MLX acceleration removed in this fork
+- ⚠️ Suitable for local testing only
+- ⚠️ Slower than Linux/CUDA
+
+**Note:** This fork is specifically optimized for cloud GPU inference on Linux. For maximum performance on Apple Silicon, use the [original ACE-Step 1.5 repository](https://github.com/ace-step/ACE-Step-1.5) which includes full MLX support.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - **GPU**: NVIDIA GPU with 8GB+ VRAM (16GB+ recommended)
-- **OS**: Linux or macOS (Windows via WSL)
+- **OS**: Linux or macOS
 - **CUDA**: 11.8+ (for NVIDIA GPUs)
-- **Python**: 3.10 or 3.11
+- **Python**: 3.11
 
 ### Installation
 
@@ -231,6 +251,68 @@ uv run python -m acestep.model_downloader --model <model-name> --force
 uv run python -m acestep.model_downloader --model <model-name> --dir /path/to/checkpoints
 ```
 
+## 🎨 LoRA Customization
+
+**LoRA (Low-Rank Adaptation)** allows you to customize music generation by loading pre-trained adapters without modifying the base model.
+
+### Use Cases
+
+- 🎸 **Style customization** (rock, jazz, electronic, etc.)
+- 🎤 **Artist emulation** (specific artist's sound)
+- 🎵 **Genre specialization** (focus on specific genres)
+- ⚙️ **Personalization** (your own fine-tuned adapters)
+
+### Quick Example
+
+```python
+from acestep.handler import AceStepHandler
+from acestep.inference import generate_music, GenerationParams
+
+# Initialize handler
+handler = AceStepHandler()
+handler.initialize_service(
+    checkpoint_dir="checkpoints",
+    dit_model_path="acestep-v15-turbo",
+    lm_model_path="acestep-5Hz-lm-1.7B",
+)
+
+# Load LoRA adapter
+handler.load_lora(
+    lora_path="checkpoints/lora/electronic_music",
+    scale=0.8  # 0.0 to 1.0 (strength)
+)
+
+# Generate with LoRA
+params = GenerationParams(
+    caption="energetic techno with heavy bass",
+    duration=30
+)
+result = generate_music(handler, params)
+```
+
+### LoRA Adapter Structure
+
+Place LoRA adapters in `checkpoints/lora/`:
+
+```
+checkpoints/
+├── lora/
+│   ├── rock_style/
+│   │   └── adapter_model.safetensors
+│   ├── jazz_adapter/
+│   │   └── adapter_model.safetensors
+│   └── electronic_music/
+│       └── adapter_model.safetensors
+```
+
+### Finding LoRA Adapters
+
+1. **Train your own** - Use the [original ACE-Step 1.5 repo](https://github.com/ace-step/ACE-Step-1.5) with training code
+2. **Community sharing** - Check HuggingFace for shared adapters
+3. **Custom fine-tuning** - Fine-tune on your music dataset
+
+**📖 For detailed LoRA usage, see [docs/LORA_USAGE.md](docs/LORA_USAGE.md)**
+
 
 ## 🛠️ Advanced Configuration
 
@@ -383,7 +465,7 @@ Typical generation times on various GPUs:
 
 ## 🤝 Contributing
 
-This is a cleaned and streamlined fork of the original ACE-Step project, focusing on core music generation features.
+This is a customized version of the original ACE-Step 1.5 project, optimized for cloud deployment and inference.
 
 ### Changes from Original
 
@@ -393,13 +475,21 @@ This is a cleaned and streamlined fork of the original ACE-Step project, focusin
 - Fixed MLX import compatibility
 - Streamlined CLI for direct usage
 
+## 🏆 Credits
+
+**This project is heavily based on [ACE-Step 1.5](https://github.com/ace-step/ACE-Step-1.5)**.
+
+All credit for the core model architecture, training, and research goes to the original authors. This repository merely provides a streamlined interface for inference and cloud deployment.
+
+**Original Repository**: [https://github.com/ace-step/ACE-Step-1.5](https://github.com/ace-step/ACE-Step-1.5)
+
 ## 📝 License
 
 See `LICENSE` file for details.
 
 ## 🔗 Links
 
-- **Original Repository**: [ACE-Step Official](https://github.com/ACE-Step/ACE-Step)
+- **Original ACE-Step 1.5 Repository**: [https://github.com/ace-step/ACE-Step-1.5](https://github.com/ace-step/ACE-Step-1.5)
 - **This Fork**: [keplar-404/ace-step1.5](https://github.com/keplar-404/ace-step1.5)
 
 ## ⚠️ Known Issues

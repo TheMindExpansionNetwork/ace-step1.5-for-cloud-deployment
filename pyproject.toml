@@ -39,11 +39,9 @@ dependencies = [
     # MLX dependencies (Apple Silicon native acceleration - macOS only)
     "mlx>=0.25.2; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "mlx-lm>=0.20.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
-    # Training dependencies
+    # LoRA inference dependencies (for loading and using pre-trained LoRA adapters)
     "peft>=0.18.0",
     "lycoris-lora",
-    "lightning>=2.0.0",
-    "tensorboard>=2.0.0",
     # Local third-party packages
     # nano-vllm source is configured in [tool.uv.sources]
     "nano-vllm; sys_platform != 'darwin' or platform_machine != 'arm64'",
