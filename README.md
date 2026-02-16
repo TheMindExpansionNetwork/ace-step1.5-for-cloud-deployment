@@ -360,6 +360,32 @@ output/
 └── <uuid>_metadata.json # Generation parameters (optional)
 ```
 
+## 🌐 API Server
+
+This project includes a production-ready, persistent API server that supports **100% of the CLI features**, including advanced DiT parameters, LoRA management, and LLM reasoning.
+
+### Key Features
+- **Persistent Models**: Loads models once at startup (no reloading per request).
+- **Full Control**: Supports Text-to-Music, Cover, Repaint, Extract, Lego, and Complete tasks via JSON.
+- **Safety**: Built-in VRAM management and batch reduction.
+- **Hot-Swapping**: Reload models or load LoRAs dynamically.
+
+### Installation & Running
+The server requires `fastapi` and `uvicorn`, which are included in the project dependencies.
+
+1.  **Install Dependencies**:
+    ```bash
+    uv sync
+    ```
+
+2.  **Start the Server**:
+    ```bash
+    ./run_server.sh
+    ```
+
+3.  **Documentation**:
+    For detailed usage, JSON examples, and configuration options, see the **[API Server Guide](API_README.md)**.
+
 ## 🐛 Troubleshooting
 
 ### Models Not Downloading
