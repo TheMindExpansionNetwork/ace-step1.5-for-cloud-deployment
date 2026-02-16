@@ -238,7 +238,7 @@ async def health_check():
     
     if torch.cuda.is_available():
         vram_used = torch.cuda.memory_allocated() / 1e9
-        vram_total = torch.cuda.get_device_properties(0).total_mem / 1e9
+        vram_total = torch.cuda.get_device_properties(0).total_memory / 1e9
         device_name = torch.cuda.get_device_name(0)
     
     return HealthResponse(
