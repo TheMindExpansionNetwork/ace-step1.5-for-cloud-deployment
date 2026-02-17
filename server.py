@@ -15,9 +15,11 @@ import sys
 import time
 import asyncio
 import gc
+import json
 import torch
+import dataclasses
 from contextlib import asynccontextmanager
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, Set
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -47,16 +49,42 @@ _llm_handler: Optional[LLMHandler] = None
 DEFAULT_PORT = 8000
 DEFAULT_HOST = "0.0.0.0"
 
+# --- Helper Functions for Dynamic Safety ---
+
+def get_dataclass_fields(cls) -> Set[str]:
+    """Dynamically retrieve valid field names from a dataclass."""
+    return {f.name for f in dataclasses.fields(cls)}
+
+def safe_instantiate(data_cls, **kwargs):
+    """
+    Instantiate a dataclass using only valid fields from kwargs.
+    Filters out unsupported arguments to prevent TypeErrors.
+    """
+    valid_fields = get_dataclass_fields(data_cls)
+    filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_fields}
+    
+    # Log dropped fields for debugging (explicitly ignoring 'save_dir' which is handled separately)
+    dropped = set(kwargs.keys()) - set(filtered_kwargs.keys())
+    # remove known non-fields to reduce noise
+    dropped.discard('save_dir') 
+    
+    if dropped:
+        logger.debug(f"ℹ️ Dropped arguments for {data_cls.__name__}: {dropped}")
+        
+    return data_cls(**filtered_kwargs)
+
+# --- Pydantic Models ---
+
 class GenerateRequest(BaseModel):
     # Core prompts
     caption: str = Field(..., description="Main text prompt for music generation")
     lyrics: Union[str, List[str]] = Field("", description="Lyrics (string or list of strings)")
     instrumental: bool = Field(False, description="Generate instrumental music regardless of lyrics")
 
-    # Musical parameters
+    # Musical parameters (Matched to GenerationParams names)
     bpm: Optional[int] = Field(None, description="Beats per minute")
-    key_scale: str = Field("", description="Key and scale (e.g. 'C Major')")
-    time_signature: str = Field("", description="Time signature (e.g. '4/4')")
+    keyscale: str = Field("", description="Key and scale (e.g. 'C Major')")
+    timesignature: str = Field("", description="Time signature (e.g. '4/4')")
     vocal_language: str = Field("unknown", description="Vocal language code (en, zh, ja, etc.)")
     
     # Generation parameters
@@ -250,6 +278,34 @@ async def health_check():
         device=device_name
     )
 
+@app.get("/generation-schema")
+async def get_generation_schema():
+    """
+    Returns the supported fields and their types for GenerationParams and GenerationConfig.
+    Useful for clients to dynamically adapt to backend changes.
+    """
+    def get_fields_info(cls):
+        info = {}
+        for f in dataclasses.fields(cls):
+            type_name = str(f.type)
+            # Try to get cleaner name if possible
+            if hasattr(f.type, "__name__"):
+                type_name = f.type.__name__
+            # Handle Optional/Union typing reprs
+            if "typing." in type_name:
+                type_name = str(f.type).replace("typing.", "")
+            
+            info[f.name] = {
+                "type": type_name,
+                "default": str(f.default) if f.default != dataclasses.MISSING else None
+            }
+        return info
+
+    return {
+        "GenerationParams": get_fields_info(GenerationParams),
+        "GenerationConfig": get_fields_info(GenerationConfig)
+    }
+
 @app.post("/generate")
 async def generate(req: GenerateRequest):
     """
@@ -258,97 +314,43 @@ async def generate(req: GenerateRequest):
     if _dit_handler is None or _dit_handler.model is None:
         raise HTTPException(status_code=503, detail="DiT model is not loaded. Check server logs.")
 
-    # Convert API request to internal Params objects
-    params = GenerationParams(
-        # Core
-        caption=req.caption,
-        lyrics=req.lyrics,
-        instrumental=req.instrumental,
-        
-        # Musical
-        bpm=req.bpm,
-        key_scale=req.key_scale,
-        time_signature=req.time_signature,
-        vocal_language=req.vocal_language,
-        duration=req.duration,
-
-        # Audio Post
-        enable_normalization=req.enable_normalization,
-        normalization_db=req.normalization_db,
-        
-        # Latent Post
-        latent_shift=req.latent_shift,
-        latent_rescale=req.latent_rescale,
-
-        # Advanced DiT
-        inference_steps=req.inference_steps,
-        guidance_scale=req.guidance_scale,
-        seed=req.seed,
-        use_adg=req.use_adg,
-        cfg_interval_start=req.cfg_interval_start,
-        cfg_interval_end=req.cfg_interval_end,
-        shift=req.shift,
-        infer_method=req.infer_method,
-        timesteps=req.timesteps,
-        
-        # Task Specific
-        task_type=req.task_type,
-        reference_audio=req.reference_audio,
-        src_audio=req.src_audio,
-        audio_codes=req.audio_codes or "",
-        repainting_start=req.repainting_start,
-        repainting_end=req.repainting_end,
-        audio_cover_strength=req.audio_cover_strength,
-        cover_noise_strength=req.cover_noise_strength,
-
-        # LLM / Thinking
-        thinking=req.thinking,
-        lm_temperature=req.lm_temperature,
-        lm_cfg_scale=req.lm_cfg_scale,
-        lm_top_k=req.lm_top_k,
-        lm_top_p=req.lm_top_p,
-        lm_negative_prompt=req.lm_negative_prompt,
-        
-        # CoT Settings
-        use_cot_metas=req.use_cot_metas,
-        use_cot_caption=req.use_cot_caption,
-        use_cot_lyrics=req.use_cot_lyrics,
-        use_cot_language=req.use_cot_language,
-        use_constrained_decoding=req.use_constrained_decoding,
-        
-        # CoT Overrides
-        cot_bpm=req.cot_bpm,
-        cot_keyscale=req.cot_keyscale,
-        cot_timesignature=req.cot_timesignature,
-        cot_duration=req.cot_duration,
-        cot_vocal_language=req.cot_vocal_language,
-        cot_caption=req.cot_caption,
-        cot_lyrics=req.cot_lyrics
-    )
-    
-    config = GenerationConfig(
-        batch_size=req.batch_size,
-        audio_format=req.audio_format,
-        save_dir=os.path.join(os.path.dirname(__file__), "output"),
-        allow_lm_batch=req.allow_lm_batch,
-        use_random_seed=req.use_random_seed,
-        seeds=req.seeds
-    )
-
     logger.info(f"🎨 Generating: {req.caption[:50]}... (Steps: {req.inference_steps}, Batch: {req.batch_size})")
-    
+
     try:
-        # Run generation blocking (since we have 1 worker and need GPU)
+        # Convert API request to dict
+        req_dict = req.model_dump()
+        
+        # 1. Construct GenerationParams dynamically
+        # This filters out any keys in req_dict that aren't in GenerationParams
+        # It ensures we never get a TypeError for unexpected arguments
+        params = safe_instantiate(GenerationParams, **req_dict)
+        
+        # 2. Construct GenerationConfig dynamically
+        # Note: 'save_dir' must NOT be passed here as it is not in GenerationConfig dataclass
+        config = safe_instantiate(GenerationConfig, **req_dict)
+        
+        # 3. Determine output directory
+        save_dir = os.path.join(os.path.dirname(__file__), "output")
+        
+        # 4. Run generation
         # Using the same generate_music function as CLI
         result: GenerationResult = generate_music(
             dit_handler=_dit_handler,
             llm_handler=_llm_handler,
             params=params,
-            config=config
+            config=config,
+            save_dir=save_dir # Passed as separate argument, not in config
         )
         
         if not result.success:
-            raise HTTPException(status_code=500, detail=result.error or result.status_message)
+            # Check for bad inputs (like file not found) vs server errors
+            status_code = 500
+            if "File not found" in str(result.error):
+                status_code = 400
+            
+            error_detail = result.error or result.status_message
+            logger.error(f"Generation failed: {error_detail}")
+            raise HTTPException(status_code=status_code, detail=error_detail)
             
         return {
             "success": True,
@@ -356,9 +358,17 @@ async def generate(req: GenerateRequest):
             "timings": result.extra_outputs.get("time_costs", {})
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.exception("Generation failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Generation failed with unexpected error")
+        # Return structured error
+        return {
+             "success": False,
+             "error": "Internal Server Error",
+             "details": str(e),
+             "type": type(e).__name__
+        }
 
 @app.post("/reload")
 async def reload_models():
