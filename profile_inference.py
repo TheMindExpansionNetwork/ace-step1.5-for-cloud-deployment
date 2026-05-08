@@ -116,7 +116,7 @@ def auto_detect_backend(device: str) -> str:
 def load_env_config() -> Dict[str, str]:
     """Load configuration defaults from .env file."""
     env_config = {
-        "ACESTEP_CONFIG_PATH": "acestep-v15-turbo",
+        "ACESTEP_CONFIG_PATH": "acestep-v15-xl-turbo",
         "ACESTEP_LM_MODEL_PATH": "acestep-5Hz-lm-0.6B",
         "ACESTEP_DEVICE": "auto",
         "ACESTEP_LM_BACKEND": "auto",

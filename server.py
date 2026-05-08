@@ -182,7 +182,7 @@ async def lifespan(app: FastAPI):
     # 2. Configuration from Env or Defaults
     project_root = os.path.dirname(os.path.abspath(__file__))
     checkpoint_dir = os.path.join(project_root, "checkpoints")
-    config_path = os.getenv("ACESTEP_CONFIG_PATH", "acestep-v15-turbo")
+    config_path = os.getenv("ACESTEP_CONFIG_PATH", "acestep-v15-xl-turbo")
     device = os.getenv("ACESTEP_DEVICE", "auto")
     
     # Environment flags
@@ -379,7 +379,7 @@ async def reload_models():
         raise HTTPException(status_code=503, detail="Handler not created")
         
     project_root = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.getenv("ACESTEP_CONFIG_PATH", "acestep-v15-turbo")
+    config_path = os.getenv("ACESTEP_CONFIG_PATH", "acestep-v15-xl-turbo")
     
     logger.info("Reloading DiT model...")
     # initialize_service handles unloading the old model safely first

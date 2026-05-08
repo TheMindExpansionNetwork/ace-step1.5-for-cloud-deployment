@@ -1,5 +1,7 @@
 # ACE-Step 1.5 - Music Generation
 
+> Jimsky/Hermes fork note: this deployment fork now defaults to `ACE-Step/acestep-v15-xl-turbo` (`acestep-v15-xl-turbo`) for high-quality 8-step XL Turbo generation. See `docs/JIMSKY_XL_TURBO_DEPLOYMENT.md` and run `python scripts/jimsky_xl_turbo_preflight.py` for a CPU-only wiring check before downloading weights or starting a GPU.
+
 AI-powered music generation from text descriptions. Generate full songs with vocals, instrumentals, covers, and more.
 
 ## 🎵 What Can It Do?

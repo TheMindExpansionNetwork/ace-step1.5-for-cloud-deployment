@@ -282,12 +282,21 @@ def _smart_download(
 # Main model contains core components (vae, text_encoder, default DiT)
 MAIN_MODEL_REPO = "ACE-Step/Ace-Step1.5"
 
+# Jimsky/Hermes default target for high-quality 8-step generation.
+# This XL Turbo model is downloaded as a separate DiT checkpoint while the
+# original main model repo still provides shared VAE/text/LM components.
+DEFAULT_DIT_MODEL = "acestep-v15-xl-turbo"
+DEFAULT_DIT_REPO = "ACE-Step/acestep-v15-xl-turbo"
+
 # Sub-models that can be downloaded separately into the checkpoints directory
 SUBMODEL_REGISTRY: Dict[str, str] = {
     # LM models
     "acestep-5Hz-lm-0.6B": "ACE-Step/acestep-5Hz-lm-0.6B",
     "acestep-5Hz-lm-4B": "ACE-Step/acestep-5Hz-lm-4B",
     # DiT models
+    "acestep-v15-xl-turbo": "ACE-Step/acestep-v15-xl-turbo",
+    "acestep-v15-xl-sft": "ACE-Step/acestep-v15-xl-sft",
+    "acestep-v15-xl-base": "ACE-Step/acestep-v15-xl-base",
     "acestep-v15-turbo-shift3": "ACE-Step/acestep-v15-turbo-shift3",
     "acestep-v15-sft": "ACE-Step/acestep-v15-sft",
     "acestep-v15-base": "ACE-Step/acestep-v15-base",
@@ -297,7 +306,6 @@ SUBMODEL_REGISTRY: Dict[str, str] = {
 
 # Components that come from the main model repo (ACE-Step/Ace-Step1.5)
 MAIN_MODEL_COMPONENTS = [
-    "acestep-v15-turbo",      # Default DiT model
     "vae",                     # VAE for audio encoding/decoding
     "Qwen3-Embedding-0.6B",    # Text encoder
     "acestep-5Hz-lm-1.7B",     # Default LM model (1.7B)

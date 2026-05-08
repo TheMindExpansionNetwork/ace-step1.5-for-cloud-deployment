@@ -1352,7 +1352,7 @@ def main():
             if args.task_type in {"lego", "extract", "complete"}:
                 preferred = "acestep-v15-base"
             else:
-                preferred = "acestep-v15-turbo"
+                preferred = "acestep-v15-xl-turbo"
             args.config_path = preferred if preferred in available_models else available_models[0]
             print(f"Auto-selected config_path: {args.config_path}")
         else:
@@ -1378,7 +1378,7 @@ def main():
             parser.error(f"Failed to download main model: {msg}")
     if args.config_path:
         config_name = str(args.config_path)
-        known_models = {"acestep-v15-turbo"} | set(SUBMODEL_REGISTRY.keys())
+        known_models = {"acestep-v15-xl-turbo", "acestep-v15-turbo"} | set(SUBMODEL_REGISTRY.keys())
         if check_model_exists(config_name, checkpoints_dir):
             pass
         elif config_name in known_models:
